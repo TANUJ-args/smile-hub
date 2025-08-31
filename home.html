@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="en" class="h-100">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Smile Hub - Professional Dental Patient Management</title>
+    <link rel="icon" type="image/x-icon" href="./ico2.png" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+      :root {
+        --primary-color: #000000;
+        --secondary-color: #ffffff;
+        --accent-color: #6c757d;
+        --dark-bg: #0a0c10;
+        --darker-bg: #151922;
+        --card-bg: rgba(255, 255, 255, 0.08);
+        --text-primary: #ffffff;
+        --text-secondary: rgba(255, 255, 255, 0.8);
+        --text-muted: rgba(255, 255, 255, 0.6);
+        --border-color: rgba(255, 255, 255, 0.1);
+        --shadow-light: 0 8px 32px rgba(255, 255, 255, 0.1);
+        --shadow-heavy: 0 20px 60px rgba(0, 0, 0, 0.5);
+        --gradient-primary: linear-gradient(135deg, #000000 0%, #343a40 100%);
+        --gradient-secondary: linear-gradient(135deg, #343a40 0%, #6c757d 100%);
+        --gradient-bg: linear-gradient(135deg, var(--dark-bg) 0%, var(--darker-bg) 50%, #1a1f2e 100%);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html, body {
+        height: 100%;
+        font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+        scroll-behavior: smooth;
+      }
+
+      body {
+        background: var(--gradient-bg);
+        background-attachment: fixed;
+        color: var(--text-primary);
+        line-height: 1.6;
+        overflow-x: hidden;
+      }
+
+      /* Animated background elements */
+      body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+                    radial-gradient(circle at 80% 20%, rgba(108, 117, 125, 0.05) 0%, transparent 50%),
+                    radial-gradient(circle at 40% 80%, rgba(52, 58, 64, 0.03) 0%, transparent 50%);
+        pointer-events: none;
+        z-index: -1;
+      }
+
+      .cover-container {
+        max-width: 1200px;
+        position: relative;
+        z-index: 1;
+      }
+
+      /* Navigation Styles - Smooth Edges */
+      .navbar {
+        backdrop-filter: blur(20px);
+        background: rgba(10, 12, 16, 0.9);
+        border: 1px solid var(--border-color);
+        padding: 1rem 0;
+        transition: all 0.3s ease;
+        border-radius: 15px; /* Smooth rounded corners */
+        margin: 0 1rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+
+      .navbar-brand {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: var(--secondary-color) !important; /* Pure white as requested */
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        text-decoration: none;
+        transition: all 0.3s ease;
+      }
+
+      .navbar-brand:hover {
+        transform: scale(1.05);
+        color: var(--text-secondary) !important;
+      }
+
+      .nav-masthead .nav-link {
+        color: var(--text-secondary);
+        border-bottom: 2px solid transparent;
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        text-decoration: none;
+        border-radius: 8px;
+      }
+
+      .nav-masthead .nav-link::before {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        width: 0;
+        height: 2px;
+        background: var(--secondary-color);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        transform: translateX(-50%);
+      }
+
+      .nav-masthead .nav-link.active,
+      .nav-masthead .nav-link:hover {
+        color: var(--text-primary);
+        transform: translateY(-2px);
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .nav-masthead .nav-link.active::before,
+      .nav-masthead .nav-link:hover::before {
+        width: 80%;
+      }
+
+      /* Main Content */
+      main {
+        padding: 4rem 0;
+      }
+
+      .cover-heading {
+        font-size: 4.5rem;
+        font-weight: 800;
+        color: var(--secondary-color) !important; /* White text as requested */
+        text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+        margin-bottom: 2rem;
+        text-align: center;
+        position: relative;
+        animation: fadeInUp 1s ease-out;
+      }
+
+      .cover-heading::after {
+        content: '';
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        width: 100px;
+        height: 4px;
+        background: var(--secondary-color);
+        transform: translateX(-50%);
+        border-radius: 2px;
+      }
+
+      .lead {
+        font-size: 1.3rem;
+        font-weight: 300;
+        color: var(--text-secondary);
+        line-height: 1.8;
+        max-width: 700px;
+        margin: 0 auto 3rem;
+        text-align: center;
+        animation: fadeInUp 1s ease-out 0.2s both;
+      }
+
+      /* Feature Cards */
+      .feature-cards-container {
+        animation: fadeInUp 1s ease-out 0.4s both;
+      }
+
+      .feature-card {
+        background: var(--card-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        padding: 3rem 2rem;
+        margin: 1rem;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        height: 100%;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      }
+
+      .feature-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: var(--secondary-color);
+        opacity: 0;
+        transition: all 0.4s ease;
+        z-index: -1;
+      }
+
+      .feature-card:hover {
+        transform: translateY(-15px) scale(1.02);
+        box-shadow: var(--shadow-heavy);
+        border-color: var(--secondary-color);
+      }
+
+      .feature-card:hover::before {
+        opacity: 0.05;
+      }
+
+      .feature-icon {
+        font-size: 3.5rem;
+        color: var(--secondary-color);
+        margin-bottom: 1.5rem;
+        transition: all 0.3s ease;
+      }
+
+      .feature-card:hover .feature-icon {
+        transform: scale(1.1) rotate(5deg);
+        color: var(--accent-color);
+      }
+
+      .feature-card h4 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+      }
+
+      .feature-card p {
+        color: var(--text-secondary);
+        font-size: 1rem;
+        line-height: 1.6;
+        transition: all 0.3s ease;
+      }
+
+      .feature-card:hover h4,
+      .feature-card:hover p {
+        color: var(--text-primary);
+      }
+
+      /* Buttons */
+      .btn-primary-custom {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+        border: 2px solid var(--secondary-color);
+        padding: 18px 45px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        font-size: 1rem;
+        border-radius: 50px;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: var(--shadow-light);
+        position: relative;
+        overflow: hidden;
+        color: white;
+        text-decoration: none;
+        display: inline-block;
+        animation: fadeInUp 1s ease-out 0.6s both;
+      }
+
+      .btn-primary-custom::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: var(--secondary-color);
+        transition: all 0.6s ease;
+        z-index: -1;
+      }
+
+      .btn-primary-custom:hover::before {
+        left: 0;
+      }
+
+      .btn-primary-custom:hover {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 15px 40px rgba(255, 255, 255, 0.2);
+        color: var(--primary-color);
+        border-color: var(--secondary-color);
+      }
+
+      .btn-primary-custom:active {
+        transform: translateY(-1px) scale(1.02);
+      }
+
+      /* Footer */
+      footer {
+        background: rgba(10, 12, 16, 0.9);
+        backdrop-filter: blur(20px);
+        border-top: 1px solid var(--border-color);
+        padding: 2rem 0;
+        margin-top: 4rem;
+        border-radius: 15px 15px 0 0;
+      }
+
+      footer p {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s ease;
+      }
+
+      footer strong {
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+
+      footer p:hover {
+        color: var(--text-secondary);
+      }
+
+      /* Animations */
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(40px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Responsive Design */
+      @media (max-width: 768px) {
+        .nav-masthead .nav-link {
+          margin: 0.5rem 0;
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          text-align: center;
+        }
+
+        .cover-heading {
+          font-size: 2.8rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .lead {
+          font-size: 1.1rem;
+          padding: 0 1rem;
+        }
+
+        .feature-card {
+          margin: 1rem 0;
+          padding: 2rem 1.5rem;
+        }
+
+        .btn-primary-custom {
+          padding: 15px 35px;
+          font-size: 0.9rem;
+        }
+
+        main {
+          padding: 2rem 0;
+        }
+
+        .navbar {
+          margin: 0 0.5rem;
+          border-radius: 12px;
+        }
+      }
+
+      @media (max-width: 576px) {
+        .cover-heading {
+          font-size: 2.2rem;
+        }
+
+        .feature-card {
+          padding: 1.5rem 1rem;
+        }
+
+        .feature-icon {
+          font-size: 2.5rem;
+        }
+      }
+
+      /* Loading animation */
+      .cover-container {
+        animation: fadeIn 0.5s ease-out;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+    </style>
+  </head>
+  <body class="d-flex h-100 text-center text-white bg-dark">
+    <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+      <header class="mb-auto">
+        <nav class="navbar navbar-expand-md navbar-dark">
+          <div class="container-fluid px-0">
+            <h2 class="float-md-start mb-0 navbar-brand mx-3">
+              Smile Hub
+            </h2>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCover" aria-controls="navbarCover" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-center float-md-end" id="navbarCover">
+              <ul class="navbar-nav nav-masthead mb-2 mb-md-0">
+                <li class="nav-item">
+                  <a class="nav-link active" aria-current="page" href="home.html">
+                    <i class="fas fa-home me-1"></i>Home
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="patient.html">
+                    <i class="fas fa-users me-1"></i>Patients
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="#contact">
+                    <i class="fas fa-envelope me-1"></i>Contact
+                  </a>
+                </li>
+              </ul>
+              <ul class="navbar-nav nav-masthead ms-md-auto mb-2 mb-md-0">
+                <li class="nav-item" id="loginNavItem">
+                  <a class="nav-link" href="login.html">
+                    <i class="fas fa-sign-in-alt me-1"></i>Login
+                  </a>
+                </li>
+                <li class="nav-item d-none" id="userGreetingItem">
+                  <span class="nav-link" id="userGreetingText" style="color: var(--text-primary); text-transform: uppercase; font-weight: 700;">HELLO, USER</span>
+                </li>
+                <li class="nav-item d-none" id="logoutNavItem">
+                  <a class="nav-link" href="#" id="logoutNavLink">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </nav>
+      </header>
+
+      <main class="px-3 flex-fill d-flex flex-column justify-content-center align-items-center">
+        <h1 class="cover-heading">
+          Smile Hub
+        </h1>
+        <p class="lead">
+          Professional dental patient management platform designed for modern practices. 
+          Streamline patient records, treatment tracking, and practice management with 
+          our sophisticated black & white themed system. Each user manages their own private patient data.
+        </p>
+        
+        <div class="feature-cards-container w-100 mb-5">
+          <div class="row g-4">
+            <div class="col-lg-4 col-md-6">
+              <div class="feature-card text-center h-100">
+                <div class="feature-icon">
+                  <i class="fas fa-user-md"></i>
+                </div>
+                <h4>Personal Patient Management</h4>
+                <p>Comprehensive patient profiling with advanced treatment tracking. Each user maintains their own private patient database.</p>
+              </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+              <div class="feature-card text-center h-100">
+                <div class="feature-icon">
+                  <i class="fas fa-chart-line"></i>
+                </div>
+                <h4>Private Financial Tracking</h4>
+                <p>Monitor total fees, payments received, and outstanding dues with detailed financial reporting. Your data stays private.</p>
+              </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+              <div class="feature-card text-center h-100">
+                <div class="feature-icon">
+                  <i class="fas fa-microscope"></i>
+                </div>
+                <h4>Secure Treatment Plans</h4>
+                <p>Track various dental treatments including orthodontics, prosthodontics, and specialized procedures with complete privacy.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <p class="lead">
+          <a href="patient.html" class="btn btn-lg btn-primary-custom">
+            <i class="fas fa-rocket me-2"></i>Launch Platform
+          </a>
+        </p>
+      </main>
+
+      <footer class="mt-auto text-center" id="contact">
+        <div class="container">
+          <div class="row align-items-center">
+            <div class="col-md-6 text-md-start">
+              <p class="mb-1">
+                <strong>Smile Hub</strong> - Professional Dental Management
+              </p>
+              <p class="mb-0">Engineered with modern technology for exceptional patient care delivery.</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+              <p class="mb-1">
+                <i class="fas fa-envelope me-2"></i>support@smilehub.com
+              </p>
+              <p class="mb-0">
+                <i class="fas fa-copyright me-1"></i>2025 Smile Hub. All rights reserved.
+              </p>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Authentication Script -->
+    <script>
+      // Check authentication status on page load
+      async function checkAuthStatus() {
+        const loginNavItem = document.getElementById('loginNavItem');
+        const userGreetingItem = document.getElementById('userGreetingItem');
+        const userGreetingText = document.getElementById('userGreetingText');
+        const logoutNavItem = document.getElementById('logoutNavItem');
+        
+        try {
+          const response = await fetch('/auth/user');
+          const data = await response.json();
+          
+          if (data.authenticated) {
+            // User is logged in
+            loginNavItem.classList.add('d-none');
+            userGreetingItem.classList.remove('d-none');
+            logoutNavItem.classList.remove('d-none');
+            userGreetingText.textContent = `HELLO, ${(data.user.fullName || data.user.username).toUpperCase()}`;
+          } else {
+            // User is not logged in
+            loginNavItem.classList.remove('d-none');
+            userGreetingItem.classList.add('d-none');
+            logoutNavItem.classList.add('d-none');
+          }
+        } catch (error) {
+          console.error('Auth check failed:', error);
+          // Show login option if auth check fails
+          loginNavItem.classList.remove('d-none');
+          userGreetingItem.classList.add('d-none');
+          logoutNavItem.classList.add('d-none');
+        }
+      }
+
+      // Logout function
+      async function handleLogout() {
+        try {
+          const response = await fetch('/auth/logout', { 
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            // Refresh page to update nav state
+            window.location.reload();
+          } else {
+            console.error('Logout failed');
+            alert('Logout failed. Please try again.');
+          }
+        } catch (error) {
+          console.error('Logout error:', error);
+          alert('Logout failed. Please try again.');
+        }
+      }
+
+      // Bind logout event
+      document.addEventListener('DOMContentLoaded', () => {
+        checkAuthStatus();
+        
+        const logoutLink = document.getElementById('logoutNavLink');
+        if (logoutLink) {
+          logoutLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleLogout();
+          });
+        }
+      });
+    </script>
+  </body>
+</html>

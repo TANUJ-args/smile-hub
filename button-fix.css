@@ -1,0 +1,233 @@
+/* Button Container Fix */
+.form-button-container {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 15px !important;
+  margin-top: 25px !important;
+  align-items: center !important;
+}
+
+/* Base Button Styles */
+.form-button-container .btn {
+  min-width: 120px !important;
+  width: auto !important;
+  border-radius: 50px !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  padding: 12px 24px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  transition: all 0.3s ease !important;
+  border: 2px solid !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  display: inline-block !important;
+  text-align: center !important;
+}
+
+/* Cancel Button Styles */
+.btn-cancel-fixed {
+  background: #6c757d !important;
+  color: white !important;
+  border-color: #6c757d !important;
+}
+
+.btn-cancel-fixed:hover {
+  background: #5a6268 !important;
+  border-color: #5a6268 !important;
+  color: white !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3) !important;
+}
+
+.btn-cancel-fixed:focus {
+  background: #5a6268 !important;
+  border-color: #5a6268 !important;
+  color: white !important;
+  outline: none !important;
+  box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.25) !important;
+}
+
+/* Save Button Styles */
+.btn-save-fixed {
+  background: linear-gradient(135deg, #000000 0%, #6c757d 100%) !important;
+  color: white !important;
+  border-color: white !important;
+}
+
+.btn-save-fixed:hover {
+  background: white !important;
+  color: black !important;
+  border-color: white !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3) !important;
+}
+
+.btn-save-fixed:focus {
+  background: white !important;
+  color: black !important;
+  border-color: white !important;
+  outline: none !important;
+  box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Treatment Type Display Mapping Styles */
+.treatment-display {
+  font-weight: 600 !important;
+  color: var(--text-primary) !important;
+}
+
+/* Edit Form Button Fixes */
+#editPatientForm .form-button-container {
+  position: static !important;
+  width: 100% !important;
+  padding-top: 20px !important;
+}
+
+#editPatientForm .form-button-container .btn {
+  position: static !important;
+}
+
+/* Patient Details Button Fix */
+.patient-details .btn-sm {
+  position: absolute !important;
+  top: 25px !important;
+  right: 25px !important;
+  min-width: auto !important;
+  width: auto !important;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .form-button-container {
+    flex-direction: column !important;
+    gap: 12px !important;
+    align-items: stretch !important;
+  }
+  
+  .form-button-container .btn {
+    width: 100% !important;
+    min-width: auto !important;
+    font-size: 1rem !important;
+    padding: 14px 0 !important;
+  }
+  
+  /* Mobile Edit Form */
+  #editPatientForm .form-button-container {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+  
+  #editPatientForm .form-button-container .btn {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 12px 0 !important;
+  }
+  
+  /* Mobile Patient Details */
+  .patient-details .btn-sm {
+    position: static !important;
+    width: 100% !important;
+    margin: 10px 0 !important;
+    top: auto !important;
+    right: auto !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .form-button-container .btn {
+    font-size: 0.9rem !important;
+    padding: 12px 0 !important;
+  }
+}
+
+/* Override any conflicting Bootstrap classes */
+.d-flex.justify-content-end.gap-3.mt-4 {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: flex-end !important;
+  gap: 15px !important;
+  margin-top: 25px !important;
+}
+
+/* Specific overrides for your form */
+#patientForm .d-flex.justify-content-end.gap-3.mt-4 .btn {
+  min-width: 120px !important;
+  width: auto !important;
+  flex: none !important;
+}
+
+/* Force button display */
+.btn-secondary, .btn-primary {
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+/* Fix bright readonly treatment type field */
+input[readonly] {
+  background: rgba(10, 12, 16, 0.8) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+/* For light mode */
+:root.light-mode input[readonly] {
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Search Button Layout - Side by Side on Mobile */
+@media (max-width: 768px) {
+  .search {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    margin-bottom: 20px !important;
+  }
+  .search input {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    margin-bottom: 10px !important;
+  }
+  .search button {
+    width: 100% !important;
+    padding: 12px 0 !important;
+  }
+}
+/* Table Enhancement - Swipe Indicator */
+.patient-list::after {
+  content: "← Swipe to see more →";
+  display: block;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 10px;
+  font-style: italic;
+}
+
+@media (min-width: 769px) {
+  .patient-list::after {
+    display: none;
+  }
+}
+
+/* Better mobile table scrolling */
+@media (max-width: 768px) {
+  .patient-list {
+    position: relative;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  
+  .patient-list::-webkit-scrollbar {
+    height: 4px;
+  }
+  
+  .patient-list::-webkit-scrollbar-thumb {
+    background: var(--accent-color);
+    border-radius: 2px;
+  }
+}
+
+
