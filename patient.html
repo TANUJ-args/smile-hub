@@ -10,20 +10,21 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 <style>
-  :root {
-    --primary-color: #000000;
-    --secondary-color: #ffffff;
-    --accent-color: #6c757d;
-    --dark-bg: #0a0c10;
-    --darker-bg: #151922;
-    --card-bg: rgba(255, 255, 255, 0.08);
-    --text-primary: #ffffff;
-    --text-secondary: rgba(255, 255, 255, 0.8);
-    --text-muted: rgba(255, 255, 255, 0.6);
-    --border-color: rgba(255, 255, 255, 0.1);
-    --shadow-light: 0 8px 32px rgba(255, 255, 255, 0.1);
-    --gradient-bg: linear-gradient(135deg, var(--dark-bg) 0%, var(--darker-bg) 50%, #1a1f2e 100%);
-  }
+:root {
+  --primary-color: #54CADD;        /* Sea Serpent - calming blue */
+  --secondary-color: #F6F1E0;      /* Warm Beige - soft background */
+  --accent-color: #F5DBA3;         /* Deep Champagne - warm highlights */
+  --dark-bg: #F8F9FA;              /* Light Gray - main background */
+  --darker-bg: #E9ECEF;            /* Slightly darker gray */
+  --card-bg: #FFFFFF;              /* Pure White - card backgrounds */
+  --text-primary: #2C3E50;         /* Dark Blue-Gray - main text */
+  --text-secondary: #5A6C7D;       /* Medium Gray - secondary text */
+  --text-muted: #7B8794;           /* Light Gray - muted text */
+  --border-color: #E1E5E9;         /* Light Border - subtle borders */
+  --shadow-light: 0 4px 16px rgba(44, 62, 80, 0.1);  /* Soft shadows */
+  --gradient-bg: linear-gradient(135deg, #F6F1E0 0%, #E9ECEF 50%, #FFFFFF 100%);
+}
+
 
   * {
     margin: 0;
@@ -45,6 +46,7 @@
     overflow-x: hidden;
   }
 
+
   body::before {
     content: '';
     position: fixed;
@@ -61,13 +63,13 @@
 
   .navbar {
     backdrop-filter: blur(20px);
-    background: rgba(10, 12, 16, 0.9);
+    background: var(--card-bg) !important;
     border: 1px solid var(--border-color);
     padding: 1rem 0;
     transition: all 0.3s ease;
     border-radius: 15px;
     margin: 0 1rem 2rem 1rem;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-light);
   }
 
   .navbar-brand {
