@@ -11,7 +11,24 @@ require('dotenv').config();
 
 const app = express();
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false });
+// Enhanced PostgreSQL connection pool configuration for Neon
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  max: 20, // Maximum number of clients in the pool
+  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+  connectionTimeoutMillis: 2000, // Return error after 2 seconds if connection could not be established
+});
+
+// Test database connection on startup
+pool.on('connect', () => {
+  console.log('Connected to Neon PostgreSQL database');
+});
+
+pool.on('error', (err, client) => {
+  console.error('Unexpected error on idle client', err);
+  process.exit(-1);
+});
 
 
 app.use(cors());
@@ -33,49 +50,71 @@ app.use(passport.session());
 app.use(flash());
 
 async function queryDB(text, params) {
-  return pool.query(text, params);
+  const client = await pool.connect();
+  try {
+    const result = await client.query(text, params);
+    return result;
+  } catch (error) {
+    console.error('Database query error:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 // -------------------------------
 // Database Setup (run once)
 // -------------------------------
 async function initDB() {
-  await queryDB(`
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      username VARCHAR(100) UNIQUE NOT NULL,
-      password VARCHAR(255) NOT NULL,
-      email VARCHAR(255),
-      fullName VARCHAR(255),
-      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );`);
-  await queryDB(`
-    CREATE TABLE IF NOT EXISTS patients (
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,
-      contactNo VARCHAR(20),
-      email VARCHAR(255),
-      patientDescription TEXT,
-      treatmentStart DATE,
-      totalFee NUMERIC(10,2) DEFAULT 0,
-      paidFees NUMERIC(10,2) DEFAULT 0,
-      patientType VARCHAR(100),
-      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );`);
-  // Create admin user (if needed)
-  const { rowCount } = await queryDB('SELECT 1 FROM users WHERE username=$1', ['admin']);
-  if (!rowCount) {
-    const hp = bcrypt.hashSync('admin123', 10);
-    await queryDB('INSERT INTO users (username, password, fullName) VALUES ($1, $2, $3)', ['admin', hp, 'System Administrator']);
-    console.log('Default admin user created');
-  }
-  // Optionally: create sample user
-  const { rowCount: tanujCount } = await queryDB('SELECT 1 FROM users WHERE username=$1', ['tanuj']);
-  if (!tanujCount) {
-    const hp = bcrypt.hashSync('tanuj123', 10);
-    await queryDB('INSERT INTO users (username, password, fullName) VALUES ($1, $2, $3)', ['tanuj', hp, 'Tanuj Pavan']);
+  try {
+    console.log('Initializing database tables...');
+    
+    await queryDB(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(100) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        email VARCHAR(255),
+        fullName VARCHAR(255),
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );`);
+      
+    await queryDB(`
+      CREATE TABLE IF NOT EXISTS patients (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        contactNo VARCHAR(20),
+        email VARCHAR(255),
+        patientDescription TEXT,
+        treatmentStart DATE,
+        totalFee NUMERIC(10,2) DEFAULT 0,
+        paidFees NUMERIC(10,2) DEFAULT 0,
+        patientType VARCHAR(100),
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );`);
+      
+    // Create admin user (if needed)
+    const { rowCount } = await queryDB('SELECT 1 FROM users WHERE username=$1', ['admin']);
+    if (!rowCount) {
+      const hp = bcrypt.hashSync('admin123', 10);
+      await queryDB('INSERT INTO users (username, password, fullName) VALUES ($1, $2, $3)', ['admin', hp, 'System Administrator']);
+      console.log('Default admin user created');
+    }
+    
+    // Optionally: create sample user
+    const { rowCount: tanujCount } = await queryDB('SELECT 1 FROM users WHERE username=$1', ['tanuj']);
+    if (!tanujCount) {
+      const hp = bcrypt.hashSync('tanuj123', 10);
+      await queryDB('INSERT INTO users (username, password, fullName) VALUES ($1, $2, $3)', ['tanuj', hp, 'Tanuj Pavan']);
+      console.log('Sample user "tanuj" created');
+    }
+    
+    console.log('Database initialization completed successfully');
+  } catch (error) {
+    console.error('Database initialization failed:', error);
+    process.exit(1);
   }
 }
 initDB();
@@ -112,6 +151,16 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'home.html')));
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'register.html')));
 
+// Health check endpoint
+app.get('/health', async (req, res) => {
+  try {
+    await queryDB('SELECT 1');
+    res.json({ status: 'healthy', database: 'connected', timestamp: new Date().toISOString() });
+  } catch (error) {
+    res.status(503).json({ status: 'unhealthy', database: 'disconnected', error: error.message });
+  }
+});
+
 // Auth
 app.post('/auth/login', (req, res, next) => {
   passport.authenticate('local', (err, user, info) => {
@@ -124,15 +173,22 @@ app.post('/auth/login', (req, res, next) => {
   })(req, res, next);
 });
 app.post('/auth/register', async (req, res) => {
-  const { username, password, email, fullName } = req.body;
-  if (!username || !password)
-    return res.status(400).json({ error: 'Username and password are required' });
-  // Check duplicate
-  const check = await queryDB('SELECT 1 FROM users WHERE username = $1', [username]);
-  if (check.rowCount) return res.status(400).json({ error: 'Username already exists' });
-  const hp = bcrypt.hashSync(password, 10);
-  await queryDB('INSERT INTO users (username, password, email, fullName) VALUES ($1, $2, $3, $4)', [username, hp, email, fullName]);
-  res.json({ success: true, message: 'User registered successfully' });
+  try {
+    const { username, password, email, fullName } = req.body;
+    if (!username || !password)
+      return res.status(400).json({ error: 'Username and password are required' });
+    
+    // Check duplicate
+    const check = await queryDB('SELECT 1 FROM users WHERE username = $1', [username]);
+    if (check.rowCount) return res.status(400).json({ error: 'Username already exists' });
+    
+    const hp = bcrypt.hashSync(password, 10);
+    await queryDB('INSERT INTO users (username, password, email, fullName) VALUES ($1, $2, $3, $4)', [username, hp, email, fullName]);
+    res.json({ success: true, message: 'User registered successfully' });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Registration failed due to server error' });
+  }
 });
 app.post('/auth/logout', (req, res, next) => {
   req.logout(err => {
@@ -214,21 +270,24 @@ app.post('/api/patients', ensureAuthenticated, async (req, res) => {
 app.put('/api/patients/:id', ensureAuthenticated, async (req, res) => {
   const errors = validatePatient(req.body, false);
   if (errors.length) return res.status(400).json({ errors });
+  
   try {
     const { id: userId } = req.user;
     const getResult = await queryDB('SELECT * FROM patients WHERE id = $1 AND user_id = $2', [req.params.id, userId]);
     if (!getResult.rows.length) return res.status(404).json({ error: 'Patient not found' });
+    
     const existing = getResult.rows[0];
     const merged = {
       name: req.body.name ?? existing.name,
-      contactNo: req.body.contactno ?? existing.contactno,
+      contactNo: req.body.contactNo ?? existing.contactno,
       email: req.body.email ?? existing.email,
-      patientDescription: req.body.patientdescription ?? existing.patientdescription,
-      treatmentStart: req.body.treatmentstart ?? existing.treatmentstart,
-      totalFee: Number(req.body.totalfee ?? existing.totalfee),
-      paidFees: Number(req.body.paidfees ?? existing.paidfees),
-      patientType: req.body.patienttype ?? existing.patienttype
+      patientDescription: req.body.patientDescription ?? existing.patientdescription,
+      treatmentStart: req.body.treatmentStart ?? existing.treatmentstart,
+      totalFee: Number(req.body.totalFee ?? existing.totalfee),
+      paidFees: Number(req.body.paidFees ?? existing.paidfees),
+      patientType: req.body.patientType ?? existing.patienttype
     };
+    
     await queryDB(
       `UPDATE patients SET name = $1, contactNo = $2, email = $3, patientDescription = $4,
         treatmentStart = $5, totalFee = $6, paidFees = $7, patientType = $8, updatedAt = CURRENT_TIMESTAMP
@@ -236,10 +295,12 @@ app.put('/api/patients/:id', ensureAuthenticated, async (req, res) => {
       [merged.name, merged.contactNo, merged.email, merged.patientDescription,
         merged.treatmentStart, merged.totalFee, merged.paidFees, merged.patientType, req.params.id, userId]
     );
+    
     const updated = await queryDB('SELECT * FROM patients WHERE id = $1 AND user_id = $2', [req.params.id, userId]);
     res.json(updated.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: 'Database update error' });
+    console.error('Update error:', err);
+    res.status(500).json({ error: 'Database update error: ' + err.message });
   }
 });
 
@@ -250,12 +311,35 @@ app.delete('/api/patients/:id', ensureAuthenticated, async (req, res) => {
     if (!result.rowCount) return res.status(404).json({ error: 'Patient not found' });
     res.status(204).send();
   } catch (err) {
-    res.status(500).json({ error: 'Database delete error' });
+    console.error('Delete error:', err);
+    res.status(500).json({ error: 'Database delete error: ' + err.message });
   }
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('Shutting down gracefully...');
+  await pool.end();
+  console.log('Database pool closed.');
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('Shutting down gracefully...');
+  await pool.end();
+  console.log('Database pool closed.');
+  process.exit(0);
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Smile Hub server running on port ${PORT}`);
-  console.log('DB host:', new URL(process.env.DATABASE_URL).hostname);
+  console.log('Environment:', process.env.NODE_ENV);
+  if (process.env.DATABASE_URL) {
+    try {
+      console.log('DB host:', new URL(process.env.DATABASE_URL).hostname);
+    } catch (error) {
+      console.log('DB connection configured');
+    }
+  }
 });
