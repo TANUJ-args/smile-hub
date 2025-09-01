@@ -212,11 +212,26 @@ function validatePatient(body, isCreate = true) {
   if (isCreate && (!body.contactNo || !/^[6-9][0-9]{9}$/.test(body.contactNo)))
     errors.push('Mobile number must be exactly 10 digits starting with 6, 7, 8, or 9');
   if (isCreate && !body.treatmentStart) errors.push('Treatment start date is required');
+  
   if (body.treatmentStart) {
-    const d = new Date(body.treatmentStart), t = new Date(), y3 = new Date(t.getFullYear() - 3, t.getMonth(), t.getDate());
-    if (d < y3 || d > t) errors.push('Treatment start date must be within the last 3 years');
+    // Validate date format and range
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(body.treatmentStart)) {
+      errors.push('Treatment start date must be in YYYY-MM-DD format');
+    } else {
+      const d = new Date(body.treatmentStart + 'T00:00:00.000Z');
+      const t = new Date();
+      const y3 = new Date(t.getFullYear() - 3, t.getMonth(), t.getDate());
+      if (isNaN(d.getTime())) {
+        errors.push('Treatment start date is invalid');
+      } else if (d < y3 || d > t) {
+        errors.push('Treatment start date must be within the last 3 years');
+      }
+    }
   }
-  const totalFee = Number(body.totalFee ?? 0), paidFees = Number(body.paidFees ?? 0);
+  
+  const totalFee = Number(body.totalFee ?? 0);
+  const paidFees = Number(body.paidFees ?? 0);
   if (Number.isNaN(totalFee) || totalFee < 0) errors.push('Total fee must be >= 0');
   if (Number.isNaN(paidFees) || paidFees < 0) errors.push('Paid fees must be >= 0');
   if (paidFees > totalFee) errors.push('Paid fees cannot exceed total fee');
@@ -277,16 +292,29 @@ app.put('/api/patients/:id', ensureAuthenticated, async (req, res) => {
     if (!getResult.rows.length) return res.status(404).json({ error: 'Patient not found' });
     
     const existing = getResult.rows[0];
+    
+    // Handle date formatting - ensure proper PostgreSQL date format
+    let treatmentStartValue = req.body.treatmentStart ?? existing.treatmentstart;
+    if (treatmentStartValue && typeof treatmentStartValue === 'string') {
+      // Ensure date is in YYYY-MM-DD format
+      const dateMatch = treatmentStartValue.match(/(\d{4})-(\d{2})-(\d{2})/);
+      if (dateMatch) {
+        treatmentStartValue = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`;
+      }
+    }
+    
     const merged = {
       name: req.body.name ?? existing.name,
       contactNo: req.body.contactNo ?? existing.contactno,
       email: req.body.email ?? existing.email,
       patientDescription: req.body.patientDescription ?? existing.patientdescription,
-      treatmentStart: req.body.treatmentStart ?? existing.treatmentstart,
+      treatmentStart: treatmentStartValue,
       totalFee: Number(req.body.totalFee ?? existing.totalfee),
       paidFees: Number(req.body.paidFees ?? existing.paidfees),
       patientType: req.body.patientType ?? existing.patienttype
     };
+    
+    console.log('Updating patient with data:', merged); // Debug log
     
     await queryDB(
       `UPDATE patients SET name = $1, contactNo = $2, email = $3, patientDescription = $4,
