@@ -257,4 +257,5 @@ app.delete('/api/patients/:id', ensureAuthenticated, async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Smile Hub server running on port ${PORT}`);
+  console.log('DB host:', new URL(process.env.DATABASE_URL).hostname);
 });
