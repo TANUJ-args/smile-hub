@@ -328,6 +328,54 @@ app.get('/api/patients', ensureAuthenticated, async (req, res) => {
   }
 });
 
+// Enhanced PUT route with better error handling
+app.put('/api/patients/:id', ensureAuthenticated, async (req, res) => {
+  try {
+    console.log('📝 PUT request for patient:', req.params.id, 'by user:', req.user.username);
+    
+    const { id: userId } = req.user;
+    const getResult = await queryDB('SELECT * FROM patients WHERE id = $1 AND user_id = $2', [req.params.id, userId]);
+    
+    if (!getResult.rows.length) {
+      return res.status(404).json({ error: 'Patient not found' });
+    }
+    
+    const existing = getResult.rows[0];
+    
+    // Validate and merge data
+    const updatedData = {
+      name: req.body.name || existing.name,
+      contactNo: req.body.contactNo || existing.contactno,
+      email: req.body.email || existing.email,
+      patientDescription: req.body.patientDescription || existing.patientdescription,
+      treatmentStart: req.body.treatmentStart || existing.treatmentstart,
+      totalFee: Number(req.body.totalFee) || Number(existing.totalfee),
+      paidFees: Number(req.body.paidFees) || Number(existing.paidfees),
+      patientType: req.body.patientType || existing.patienttype
+    };
+    
+    // Update query
+    await queryDB(
+      `UPDATE patients SET name = $1, contactNo = $2, email = $3, patientDescription = $4,
+        treatmentStart = $5, totalFee = $6, paidFees = $7, patientType = $8, updatedAt = CURRENT_TIMESTAMP
+        WHERE id = $9 AND user_id = $10`,
+      [updatedData.name, updatedData.contactNo, updatedData.email, updatedData.patientDescription,
+        updatedData.treatmentStart, updatedData.totalFee, updatedData.paidFees, updatedData.patientType, 
+        req.params.id, userId]
+    );
+    
+    // Return updated patient
+    const updated = await queryDB('SELECT * FROM patients WHERE id = $1 AND user_id = $2', [req.params.id, userId]);
+    
+    console.log('✅ Patient updated successfully');
+    res.json(updated.rows[0]);
+    
+  } catch (err) {
+    console.error('❌ Update error:', err);
+    res.status(500).json({ error: 'Database update error', details: err.message });
+  }
+});
+
 // Health check
 app.get('/health', async (req, res) => {
   try {
