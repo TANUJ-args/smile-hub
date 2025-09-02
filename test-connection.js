@@ -19,7 +19,7 @@ async function testConnection() {
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     max: 5,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: 10000, // Increase timeout to 10 seconds
   });
 
   try {

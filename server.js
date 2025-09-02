@@ -7,6 +7,7 @@ const LocalStrategy = require('passport-local').Strategy;
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const flash = require('connect-flash');
+const pgSession = require('connect-pg-simple')(session);
 require('dotenv').config();
 
 const app = express();
@@ -39,6 +40,10 @@ app.use(express.static('.'));
 const session_secret = process.env.SESSION_SECRET || 'smile-hub-secret-key-2025';
 
 app.use(session({
+  store: new pgSession({
+    pool: pool,
+    tableName: 'user_sessions'
+  }),
   secret: session_secret,
   resave: false,
   saveUninitialized: false,
