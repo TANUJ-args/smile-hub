@@ -88,17 +88,25 @@ async function initDB() {
     // Create user_sessions table for PostgreSQL session store
     await queryDB(`
       CREATE TABLE IF NOT EXISTS user_sessions (
-        sid VARCHAR NOT NULL COLLATE "default",
+        sid VARCHAR NOT NULL,
         sess JSON NOT NULL,
         expire TIMESTAMP(6) NOT NULL
       );
     `);
     
-    // Ensure primary key exists
-    try {
+    // Check if primary key exists before adding it
+    const pkCheck = await queryDB(`
+      SELECT constraint_name 
+      FROM information_schema.table_constraints 
+      WHERE table_name = 'user_sessions' 
+      AND constraint_type = 'PRIMARY KEY'
+    `);
+    
+    if (pkCheck.rows.length === 0) {
       await queryDB(`ALTER TABLE user_sessions ADD CONSTRAINT session_pkey PRIMARY KEY (sid);`);
-    } catch (err) {
-      // Primary key might already exist
+      console.log('✅ Primary key added to user_sessions');
+    } else {
+      console.log('✅ Primary key already exists on user_sessions');
     }
     
     // Create index if not exists
@@ -151,7 +159,13 @@ async function initDB() {
     console.log('✅ Database initialization completed successfully');
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
-    process.exit(1);
+    
+    // Don't exit on constraint errors, just warn
+    if (error.message.includes('multiple primary keys')) {
+      console.log('⚠️ Primary key constraint already exists, continuing...');
+    } else {
+      process.exit(1);
+    }
   }
 }
 initDB();
