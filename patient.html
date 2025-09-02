@@ -190,7 +190,6 @@
     color: var(--text-muted);
   }
 
-
   .btn-secondary {
     background: #6c757d;
     color: white;
@@ -442,7 +441,6 @@
       font-weight: 600;
     }
 
-      /* Mobile responsive buttons */
     .form-button-container {
       flex-direction: column !important;
       gap: 12px !important;
@@ -742,7 +740,6 @@
   </button>
 </div>
 
-
 <div class="patient-list">
   <table>
     <thead>
@@ -785,391 +782,384 @@
 <script>
 const API = '/api/patients';
 
-  
-  const form = document.getElementById('patientForm');
-  const patientTableBody = document.getElementById('patientTableBody');
-  const searchInput = document.getElementById('searchInput');
-  let patients = [];
-  let currentUser = null;
+const form = document.getElementById('patientForm');
+const patientTableBody = document.getElementById('patientTableBody');
+const searchInput = document.getElementById('searchInput');
+let patients = [];
+let currentUser = null;
 
-  // TREATMENT TYPE DISPLAY MAPPING
-  const treatmentTypeMap = {
-    metal_braces: "Metal Braces",
-    ceramic_braces: "Ceramic Braces",
-    clear_aligners: "Clear Aligners",
-    lingual_braces: "Lingual Braces",
-    self_ligating_braces: "Self-Ligating Braces",
-    retainers: "Retainers",
-    palatal_expander: "Palatal Expander",
-    space_maintainers: "Space Maintainers",
-    jaw_surgery: "Jaw Surgery",
-    denture_prostho: "Denture (Prostho)",
-    rootcanal_crowns: "Root Canal & Crowns",
-    other: "Other"
-  };
+// TREATMENT TYPE DISPLAY MAPPING
+const treatmentTypeMap = {
+  metal_braces: "Metal Braces",
+  ceramic_braces: "Ceramic Braces",
+  clear_aligners: "Clear Aligners",
+  lingual_braces: "Lingual Braces",
+  self_ligating_braces: "Self-Ligating Braces",
+  retainers: "Retainers",
+  palatal_expander: "Palatal Expander",
+  space_maintainers: "Space Maintainers",
+  jaw_surgery: "Jaw Surgery",
+  denture_prostho: "Denture (Prostho)",
+  rootcanal_crowns: "Root Canal & Crowns",
+  other: "Other"
+};
 
-  function getTreatmentDisplayName(value) {
-    return treatmentTypeMap[value] || value || 'N/A';
-  }
-
-  async function checkAuthStatus() {
-    const loginNavItem = document.getElementById('loginNavItem');
-    const userGreetingItem = document.getElementById('userGreetingItem');
-    const userGreetingText = document.getElementById('userGreetingText');
-    const logoutNavItem = document.getElementById('logoutNavItem');
-    const userStatusCard = document.getElementById('userStatusCard');
-    const currentUserDisplay = document.getElementById('currentUserDisplay');
-    
-    try {
-      const response = await fetch('/auth/user');
-      const data = await response.json();
-      
-      if (data.authenticated) {
-        currentUser = data.user;
-        loginNavItem.classList.add('d-none');
-        userGreetingItem.classList.remove('d-none');
-        logoutNavItem.classList.remove('d-none');
-        userGreetingText.textContent = `HELLO, ${(data.user.fullName || data.user.username).toUpperCase()}`;
-        
-        userStatusCard.style.display = 'block';
-        currentUserDisplay.textContent = `${(data.user.fullName || data.user.username)}'s Personal Patient Database`;
-        
-        await loadPatients();
-      } else {
-        window.location.href = '/login.html';
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      window.location.href = '/login.html';
-    }
-  }
-
-  async function handleLogout() {
-    try {
-      const response = await fetch('/auth/logout', { 
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        window.location.href = '/login.html';
-      } else {
-        console.error('Logout failed');
-        alert('Logout failed. Please try again.');
-      }
-    } catch (error) {
-      console.error('Logout error:', error);
-      alert('Logout failed. Please try again.');
-    }
-  }
-
-  const today = new Date();
-  const threeYearsAgo = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
-  const treatmentStartInput = document.getElementById('treatmentStart');
-  
-  treatmentStartInput.min = threeYearsAgo.toISOString().split('T')[0];
-  treatmentStartInput.max = today.toISOString().split('T')[0];
-
-  const contactNoInput = document.getElementById('contactNo');
-  contactNoInput.addEventListener('input', function() {
-    this.value = this.value.replace(/\D/g, '');
-    if (this.value.length > 10) {
-      this.value = this.value.slice(0, 10);
-    }
-    
-    const isValid = /^[6-9][0-9]{9}$/.test(this.value);
-    if (this.value.length === 10 && !isValid) {
-      this.setCustomValidity('Mobile number must start with 6, 7, 8, or 9');
-    } else if (this.value.length > 0 && this.value.length < 10) {
-      this.setCustomValidity('Mobile number must be exactly 10 digits');
-    } else {
-      this.setCustomValidity('');
-    }
-  });
-
-  document.addEventListener('DOMContentLoaded', () => {
-    checkAuthStatus();
-    
-    const logoutLink = document.getElementById('logoutNavLink');
-    if (logoutLink) {
-      logoutLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        handleLogout();
-      });
-    }
-  });
-
-  async function loadPatients() {
-    try {
-      console.log('🔄 Loading patients...');
-      
-      const response = await fetch('/api/patients', {
-        method: 'GET',
-        credentials: 'include', // Important for session-based auth
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response headers:', response.headers);
-      
-      if (!response.ok) {
-        console.error('❌ API Error:', response.status, response.statusText);
-        return;
-      }
-      
-      const patients = await response.json();
-      console.log('📊 Received patients:', patients);
-      console.log('📊 Number of patients:', patients.length);
-      
-      // Display patients in table
-      displayPatients(patients);
-      
-    } catch (error) {
-      console.error('❌ Fetch error:', error);
-    }
-  }
-
-function displayPatients(patients) {
-  const tableBody = document.querySelector('#patient-table-body');
-  
-  if (!patients || patients.length === 0) {
-    tableBody.innerHTML = '<tr><td colspan="4">No patients found</td></tr>';
-    return;
-  }
-  
-  tableBody.innerHTML = patients.map(patient => `
-    <tr>
-      <td>${patient.name || 'No name'}</td>
-      <td>${patient.contactno || 'Not provided'}</td>
-      <td>₹${patient.due_money || 0}</td>
-      <td>
-        <button class="btn btn-danger" onclick="deletePatient('${patient.id}')">
-          Delete
-        </button>
-      </td>
-    </tr>
-  `).join('');
+function getTreatmentDisplayName(value) {
+  return treatmentTypeMap[value] || value || 'N/A';
 }
 
-
-  async function createPatient(patientData) {
-    try {
-      const response = await fetch(API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patientData)
-      });
-      
-      if (response.status === 401) {
-        window.location.href = '/login.html';
-        return null;
-      }
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.errors ? error.errors.join(', ') : error.error);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      alert('Error creating patient: ' + error.message);
-      return null;
-    }
-  }
-
-  async function updatePatient(id, patientData) {
-    try {
-      const response = await fetch(`${API}/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patientData)
-      });
-      
-      if (response.status === 401) {
-        window.location.href = '/login.html';
-        return null;
-      }
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.errors ? error.errors.join(', ') : error.error);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      alert('Error updating patient: ' + error.message);
-      return null;
-    }
-  }
-
-  async function deletePatient(id) {
-    try {
-      const response = await fetch(`${API}/${id}`, { method: 'DELETE' });
-      if (response.status === 401) {
-        window.location.href = '/login.html';
-        return false;
-      }
-      if (!response.ok && response.status !== 404) {
-        const error = await response.json();
-        throw new Error(error.error);
-      }
-      return true;
-    } catch (error) {
-      alert('Error deleting patient: ' + error.message);
-      return false;
-    }
-  }
-
-  function calculateDue(total, paid) {
-    const t = parseFloat(total);
-    const p = parseFloat(paid);
-    if (isNaN(t)) return 0;
-    if (isNaN(p)) return t;
-    return Math.max(0, t - p).toFixed(2);
-  }
-
-  function validateDate(dateString) {
-    const selectedDate = new Date(dateString);
-    const today = new Date();
-    const threeYearsAgo = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
-    return selectedDate >= threeYearsAgo && selectedDate <= today;
-  }
-
-  function renderList(list) {
-    patientTableBody.innerHTML = '';
-    const patientDetailsContainer = document.getElementById('patientDetailsContainer');
+async function checkAuthStatus() {
+  const loginNavItem = document.getElementById('loginNavItem');
+  const userGreetingItem = document.getElementById('userGreetingItem');
+  const userGreetingText = document.getElementById('userGreetingText');
+  const logoutNavItem = document.getElementById('logoutNavItem');
+  const userStatusCard = document.getElementById('userStatusCard');
+  const currentUserDisplay = document.getElementById('currentUserDisplay');
+  
+  try {
+    const response = await fetch('/auth/user', {
+      method: 'GET',
+      credentials: 'include'
+    });
+    const data = await response.json();
     
-    if(list.length === 0){
-      patientTableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-muted); padding: 2rem;">
-        ${currentUser ? `No patients found in ${currentUser.fullName || currentUser.username}'s database` : 'No patients found'}
-      </td></tr>`;
-      patientDetailsContainer.innerHTML = '';
+    if (data.authenticated) {
+      currentUser = data.user;
+      loginNavItem.classList.add('d-none');
+      userGreetingItem.classList.remove('d-none');
+      logoutNavItem.classList.remove('d-none');
+      userGreetingText.textContent = `HELLO, ${(data.user.fullName || data.user.username).toUpperCase()}`;
+      
+      userStatusCard.style.display = 'block';
+      currentUserDisplay.textContent = `${(data.user.fullName || data.user.username)}'s Personal Patient Database`;
+      
+      await loadPatients();
+    } else {
+      window.location.href = '/login.html';
+    }
+  } catch (error) {
+    console.error('Auth check failed:', error);
+    window.location.href = '/login.html';
+  }
+}
+
+async function handleLogout() {
+  try {
+    const response = await fetch('/auth/logout', { 
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (response.ok) {
+      window.location.href = '/login.html';
+    } else {
+      console.error('Logout failed');
+      alert('Logout failed. Please try again.');
+    }
+  } catch (error) {
+    console.error('Logout error:', error);
+    alert('Logout failed. Please try again.');
+  }
+}
+
+const today = new Date();
+const threeYearsAgo = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
+const treatmentStartInput = document.getElementById('treatmentStart');
+
+treatmentStartInput.min = threeYearsAgo.toISOString().split('T')[0];
+treatmentStartInput.max = today.toISOString().split('T')[0];
+
+const contactNoInput = document.getElementById('contactNo');
+contactNoInput.addEventListener('input', function() {
+  this.value = this.value.replace(/\D/g, '');
+  if (this.value.length > 10) {
+    this.value = this.value.slice(0, 10);
+  }
+  
+  const isValid = /^[6-9][0-9]{9}$/.test(this.value);
+  if (this.value.length === 10 && !isValid) {
+    this.setCustomValidity('Mobile number must start with 6, 7, 8, or 9');
+  } else if (this.value.length > 0 && this.value.length < 10) {
+    this.setCustomValidity('Mobile number must be exactly 10 digits');
+  } else {
+    this.setCustomValidity('');
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  checkAuthStatus();
+  
+  const logoutLink = document.getElementById('logoutNavLink');
+  if (logoutLink) {
+    logoutLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      handleLogout();
+    });
+  }
+});
+
+// FIXED: Load and display patients function
+async function loadPatients() {
+  try {
+    console.log('🔄 Loading patients...');
+    
+    const response = await fetch('/api/patients', {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    console.log('📡 Response status:', response.status);
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        window.location.href = '/login.html';
+        return;
+      }
+      console.error('❌ API Error:', response.status, response.statusText);
+      patientTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Error loading patients</td></tr>';
       return;
     }
     
-    list.forEach((p, index) => {
-      const dueMoney = calculateDue(p.totalFee, p.paidFees);
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td style="cursor:pointer;">${p.name}</td>
-        <td style="cursor:pointer;">${p.contactNo || ''}</td>
-        <td style="cursor:pointer;">₹${dueMoney}</td>
-        <td>
-          <button class="btn btn-danger btn-sm delete-patient-btn" data-id="${p.id}">
-            <i class="fas fa-trash me-1"></i>Delete
-          </button>
-        </td>
-      `;
-      
-      Array.from(tr.children).forEach((td, i) => {
-        if (i < 3) {
-          td.addEventListener('click', () => showDetails(index));
-        }
-      });
-      
-      patientTableBody.appendChild(tr);
-    });
+    const patientsData = await response.json();
+    console.log('📊 Received patients:', patientsData);
+    console.log('📊 Number of patients:', patientsData.length);
     
-    patientDetailsContainer.innerHTML = '';
+    patients = patientsData; // Store globally for search functionality
+    renderList(patients);
     
-    document.querySelectorAll('.delete-patient-btn').forEach(btn => {
-      btn.addEventListener('click', async function(e) {
-        e.stopPropagation();
-        const id = this.getAttribute('data-id');
-        if (confirm('Are you sure you want to delete this patient from your database?')) {
-          const success = await deletePatient(id);
-          if (success) {
-            await loadPatients();
-          }
-        }
-      });
-    });
+  } catch (error) {
+    console.error('❌ Fetch error:', error);
+    patientTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Network error - please try again</td></tr>';
   }
+}
 
-  function showDetails(index) {
-    const p = patients[index];
-    const dueMoney = calculateDue(p.totalFee, p.paidFees);
-    const patientDetailsContainer = document.getElementById('patientDetailsContainer');
-    
-    // USE DISPLAY NAME INSTEAD OF VALUE
-    const treatmentDisplayName = getTreatmentDisplayName(p.patientType);
-    
-    patientDetailsContainer.innerHTML = `
-      <div class="patient-details">
-        <button id="editBtn" class="btn btn-primary btn-sm" style="position:absolute; top:25px; right:25px;">
-          <i class="fas fa-edit me-1"></i>Edit
+// FIXED: Calculate due money function
+function calculateDue(totalFee, paidFees) {
+  const total = parseFloat(totalFee) || 0;
+  const paid = parseFloat(paidFees) || 0;
+  return Math.max(0, total - paid);
+}
+
+// FIXED: Render patient list function
+function renderList(list) {
+  patientTableBody.innerHTML = '';
+  const patientDetailsContainer = document.getElementById('patientDetailsContainer');
+  
+  if(!list || list.length === 0){
+    patientTableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-muted); padding: 2rem;">
+      ${currentUser ? `No patients found in ${currentUser.fullName || currentUser.username}'s database` : 'No patients found'}
+    </td></tr>`;
+    patientDetailsContainer.innerHTML = '';
+    return;
+  }
+  
+  list.forEach((p, index) => {
+    const dueMoney = calculateDue(p.totalfee, p.paidfees);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="cursor:pointer;">${p.name || 'No name'}</td>
+      <td style="cursor:pointer;">${p.contactno || 'Not provided'}</td>
+      <td style="cursor:pointer;">₹${dueMoney.toFixed(2)}</td>
+      <td>
+        <button class="btn btn-danger btn-sm delete-patient-btn" data-id="${p.id}">
+          <i class="fas fa-trash me-1"></i>Delete
         </button>
-        <h3><i class="fas fa-user-circle me-2"></i>${p.name}</h3>
-        <p><strong><i class="fas fa-mobile-alt me-2"></i>Mobile:</strong> ${p.contactNo || 'Not provided'}</p>
-        <p><strong><i class="fas fa-envelope me-2"></i>Email:</strong> ${p.email || 'Not provided'}</p>
-        <p><strong><i class="fas fa-tooth me-2"></i>Treatment Type:</strong> ${treatmentDisplayName}</p>
-        <p><strong><i class="fas fa-notes-medical me-2"></i>Description:</strong> ${p.patientDescription || 'No description'}</p>
-        <p><strong><i class="fas fa-calendar-alt me-2"></i>Treatment Start Date:</strong> ${p.treatmentStart || 'Not set'}</p>
-        <p><strong><i class="fas fa-rupee-sign me-2"></i>Total Fee:</strong> ₹${p.totalFee || 0}</p>
-        <p><strong><i class="fas fa-money-bill-wave me-2"></i>Paid Fees:</strong> ₹${p.paidFees || 0}</p>
-        <p><strong><i class="fas fa-exclamation-circle me-2"></i>Due Money:</strong> <span style="color: ${dueMoney > 0 ? '#ff6b6b' : '#51cf66'};">₹${dueMoney}</span></p>
-      </div>
+      </td>
     `;
     
-    document.getElementById('editBtn').addEventListener('click', function() {
-      showEditForm(index);
+    // Add click handlers for patient details
+    Array.from(tr.children).forEach((td, i) => {
+      if (i < 3) {
+        td.addEventListener('click', () => showDetails(index));
+      }
     });
-  }
-
-  function showEditForm(index) {
-    const p = patients[index];
-    const dueMoney = calculateDue(p.totalFee, p.paidFees);
-    const patientDetailsContainer = document.getElementById('patientDetailsContainer');
     
-patientDetailsContainer.innerHTML = `
-  <form id="editPatientForm" class="patient-details">
-    <div class="form-button-container" style="position:absolute; top:25px; right:25px;">
-      <button type="button" id="cancelEditBtn" class="btn btn-cancel-fixed btn-sm">
-        <i class="fas fa-times me-1"></i>Cancel
-      </button>
-      <button type="submit" class="btn btn-save-fixed btn-sm">
-        <i class="fas fa-save me-1"></i>Save
-      </button>
-    </div>
+    patientTableBody.appendChild(tr);
+  });
+  
+  // Clear details when list is rendered
+  patientDetailsContainer.innerHTML = '';
+  
+  // Add delete button handlers
+  document.querySelectorAll('.delete-patient-btn').forEach(btn => {
+    btn.addEventListener('click', async function(e) {
+      e.stopPropagation();
+      const id = this.getAttribute('data-id');
+      if (confirm('Are you sure you want to delete this patient from your database?')) {
+        const success = await deletePatient(id);
+        if (success) {
+          await loadPatients();
+        }
+      }
+    });
+  });
+}
 
-        
-        <div style="padding-top:60px;">
-          <div class="mb-3">
-            <label class="form-label"><strong>Name:</strong></label>
-            <input type="text" class="form-control" name="name" value="${p.name || ''}" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label"><strong>Mobile:</strong></label>
-            <input type="tel" class="form-control" name="contactNo" value="${p.contactNo || ''}" pattern="[6-9][0-9]{9}" maxlength="10">
-          </div>
-          <div class="mb-3">
-            <label class="form-label"><strong>Email:</strong></label>
-            <input type="email" class="form-control" name="email" value="${p.email || ''}">
-          </div>
-          <div class="mb-3">
-            <label class="form-label"><strong>Description:</strong></label>
-            <textarea class="form-control" name="patientDescription" rows="2">${p.patientDescription || ''}</textarea>
-          </div>
-          <div class="mb-3">
-            <label class="form-label"><strong>Treatment Start Date:</strong></label>
-            <input type="date" class="form-control" name="treatmentStart" value="${p.treatmentStart || ''}" min="${threeYearsAgo.toISOString().split('T')[0]}" max="${today.toISOString().split('T')[0]}">
-          </div>
-          <div class="mb-3">
-            <label class="form-label"><strong>Total Fee:</strong></label>
-            <input type="number" class="form-control" name="totalFee" value="${p.totalFee || 0}" min="0" step="0.01">
-          </div>
-          <div class="mb-3">
-            <label class="form-label"><strong>Paid Fees:</strong></label>
-            <input type="number" class="form-control" name="paidFees" value="${p.paidFees || 0}" min="0" step="0.01">
-          </div>
-         <div class="mb-3">
+// FIXED: Show patient details function
+function showDetails(index) {
+  const p = patients[index];
+  const dueMoney = calculateDue(p.totalfee, p.paidfees);
+  const patientDetailsContainer = document.getElementById('patientDetailsContainer');
+  
+  const treatmentDisplayName = getTreatmentDisplayName(p.patienttype);
+  
+  patientDetailsContainer.innerHTML = `
+    <div class="patient-details">
+      <button id="editBtn" class="btn btn-primary btn-sm" style="position:absolute; top:25px; right:25px;">
+        <i class="fas fa-edit me-1"></i>Edit
+      </button>
+      <h3><i class="fas fa-user-circle me-2"></i>${p.name}</h3>
+      <p><strong><i class="fas fa-mobile-alt me-2"></i>Mobile:</strong> ${p.contactno || 'Not provided'}</p>
+      <p><strong><i class="fas fa-envelope me-2"></i>Email:</strong> ${p.email || 'Not provided'}</p>
+      <p><strong><i class="fas fa-tooth me-2"></i>Treatment Type:</strong> ${treatmentDisplayName}</p>
+      <p><strong><i class="fas fa-notes-medical me-2"></i>Description:</strong> ${p.patientdescription || 'No description'}</p>
+      <p><strong><i class="fas fa-calendar-alt me-2"></i>Treatment Start Date:</strong> ${p.treatmentstart || 'Not set'}</p>
+      <p><strong><i class="fas fa-rupee-sign me-2"></i>Total Fee:</strong> ₹${p.totalfee || 0}</p>
+      <p><strong><i class="fas fa-money-bill-wave me-2"></i>Paid Fees:</strong> ₹${p.paidfees || 0}</p>
+      <p><strong><i class="fas fa-exclamation-circle me-2"></i>Due Money:</strong> <span style="color: ${dueMoney > 0 ? '#ff6b6b' : '#51cf66'};">₹${dueMoney.toFixed(2)}</span></p>
+    </div>
+  `;
+  
+  document.getElementById('editBtn').addEventListener('click', function() {
+    showEditForm(index);
+  });
+}
+
+// API Functions
+async function createPatient(patientData) {
+  try {
+    const response = await fetch(API, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patientData)
+    });
+    
+    if (response.status === 401) {
+      window.location.href = '/login.html';
+      return null;
+    }
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.errors ? error.errors.join(', ') : error.error);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    alert('Error creating patient: ' + error.message);
+    return null;
+  }
+}
+
+async function updatePatient(id, patientData) {
+  try {
+    const response = await fetch(`${API}/${id}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patientData)
+    });
+    
+    if (response.status === 401) {
+      window.location.href = '/login.html';
+      return null;
+    }
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.errors ? error.errors.join(', ') : error.error);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    alert('Error updating patient: ' + error.message);
+    return null;
+  }
+}
+
+async function deletePatient(id) {
+  try {
+    const response = await fetch(`${API}/${id}`, { 
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    if (response.status === 401) {
+      window.location.href = '/login.html';
+      return false;
+    }
+    if (!response.ok && response.status !== 404) {
+      const error = await response.json();
+      throw new Error(error.error);
+    }
+    return true;
+  } catch (error) {
+    alert('Error deleting patient: ' + error.message);
+    return false;
+  }
+}
+
+function validateDate(dateString) {
+  const selectedDate = new Date(dateString);
+  const today = new Date();
+  const threeYearsAgo = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
+  return selectedDate >= threeYearsAgo && selectedDate <= today;
+}
+
+function showEditForm(index) {
+  const p = patients[index];
+  const dueMoney = calculateDue(p.totalfee, p.paidfees);
+  const patientDetailsContainer = document.getElementById('patientDetailsContainer');
+  
+  patientDetailsContainer.innerHTML = `
+    <form id="editPatientForm" class="patient-details">
+      <div class="form-button-container" style="position:absolute; top:25px; right:25px;">
+        <button type="button" id="cancelEditBtn" class="btn btn-cancel-fixed btn-sm">
+          <i class="fas fa-times me-1"></i>Cancel
+        </button>
+        <button type="submit" class="btn btn-save-fixed btn-sm">
+          <i class="fas fa-save me-1"></i>Save
+        </button>
+      </div>
+      <div style="padding-top:60px;">
+        <div class="mb-3">
+          <label class="form-label"><strong>Name:</strong></label>
+          <input type="text" class="form-control" name="name" value="${p.name || ''}" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label"><strong>Mobile:</strong></label>
+          <input type="tel" class="form-control" name="contactNo" value="${p.contactno || ''}" pattern="[6-9][0-9]{9}" maxlength="10">
+        </div>
+        <div class="mb-3">
+          <label class="form-label"><strong>Email:</strong></label>
+          <input type="email" class="form-control" name="email" value="${p.email || ''}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label"><strong>Description:</strong></label>
+          <textarea class="form-control" name="patientDescription" rows="2">${p.patientdescription || ''}</textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label"><strong>Treatment Start Date:</strong></label>
+          <input type="date" class="form-control" name="treatmentStart" value="${p.treatmentstart || ''}" min="${threeYearsAgo.toISOString().split('T')[0]}" max="${today.toISOString().split('T')[0]}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label"><strong>Total Fee:</strong></label>
+          <input type="number" class="form-control" name="totalFee" value="${p.totalfee || 0}" min="0" step="0.01">
+        </div>
+        <div class="mb-3">
+          <label class="form-label"><strong>Paid Fees:</strong></label>
+          <input type="number" class="form-control" name="paidFees" value="${p.paidfees || 0}" min="0" step="0.01">
+        </div>
+        <div class="mb-3">
           <label class="form-label"><strong>Treatment Type:</strong></label>
           <select class="form-control" name="treatmentType" required>
-            <option value="${p.patientType}" selected>${getTreatmentDisplayName(p.patientType)}</option>
+            <option value="${p.patienttype}" selected>${getTreatmentDisplayName(p.patienttype)}</option>
             <option value="metal_braces">Metal Braces</option>
             <option value="ceramic_braces">Ceramic Braces</option>
             <option value="clear_aligners">Clear Aligners</option>
@@ -1184,228 +1174,157 @@ patientDetailsContainer.innerHTML = `
             <option value="other">Other</option>
           </select>
         </div>
-
-          <div class="mb-3">
-            <label class="form-label"><strong>Due Money:</strong></label>
-            <input type="text" class="form-control" value="₹${dueMoney}" readonly style="background: rgba(255,255,255,0.1);">
-          </div>
+        <div class="mb-3">
+          <label class="form-label"><strong>Due Money:</strong></label>
+          <input type="text" class="form-control" value="₹${dueMoney.toFixed(2)}" readonly style="background: rgba(255,255,255,0.1);">
         </div>
-      </form>
-    `;
-    
-    document.getElementById('cancelEditBtn').addEventListener('click', function() {
-      showDetails(index);
-    });
-    
-    document.getElementById('editPatientForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const formData = new FormData(this);
-      
-      const mobileNo = formData.get('contactNo');
-      if (mobileNo && !/^[6-9][0-9]{9}$/.test(mobileNo)) {
-        alert('Mobile number must be exactly 10 digits starting with 6, 7, 8, or 9');
-        return;
-      }
-      
-      const startDate = formData.get('treatmentStart');
-      if (startDate && !validateDate(startDate)) {
-        alert('Treatment start date must be within the last 3 years');
-        return;
-      }
-      
-      const totalFee = parseFloat(formData.get('totalFee')) || 0;
-      const paidFees = parseFloat(formData.get('paidFees')) || 0;
-      
-      if (paidFees > totalFee) {
-        alert('Paid Fees cannot be greater than Total Fee.');
-        return;
-      }
-
-      const updatedData = {
-        name: formData.get('name'),
-        contactNo: formData.get('contactNo'),
-        email: formData.get('email'),
-        patientDescription: formData.get('patientDescription'),
-        treatmentStart: formData.get('treatmentStart'),
-        totalFee: totalFee,
-        paidFees: paidFees,
-        patientType: formData.get('treatmentType') 
-      };
-
-      const updated = await updatePatient(p.id, updatedData);
-      if (updated) {
-        await loadPatients();
-        const newIndex = patients.findIndex(patient => patient.id === p.id);
-        showDetails(newIndex);
-      }
-    });
-  }
-
-  const treatmentType = document.getElementById('treatmentType');
-  const otherTreatmentType = document.getElementById('otherTreatmentType');
-
-  treatmentType.addEventListener('change', function() {
-    if (this.value === 'other') {
-      otherTreatmentType.style.display = 'block';
-      otherTreatmentType.required = true;
-    } else {
-      otherTreatmentType.style.display = 'none';
-      otherTreatmentType.required = false;
-      otherTreatmentType.value = '';
-    }
+      </div>
+    </form>
+  `;
+  
+  document.getElementById('cancelEditBtn').addEventListener('click', function() {
+    showDetails(index);
   });
-
-  form.addEventListener('submit', async (e) => {
+  
+  document.getElementById('editPatientForm').addEventListener('submit', async function(e) {
     e.preventDefault();
+    const formData = new FormData(this);
     
-    const mobileNo = form.contactNo.value;
-    if (!/^[6-9][0-9]{9}$/.test(mobileNo)) {
+    const mobileNo = formData.get('contactNo');
+    if (mobileNo && !/^[6-9][0-9]{9}$/.test(mobileNo)) {
       alert('Mobile number must be exactly 10 digits starting with 6, 7, 8, or 9');
       return;
     }
     
-    const startDate = form.treatmentStart.value;
-    if (!validateDate(startDate)) {
+    const startDate = formData.get('treatmentStart');
+    if (startDate && !validateDate(startDate)) {
       alert('Treatment start date must be within the last 3 years');
       return;
     }
     
-    let selectedTreatment = form.treatmentType.value;
-    if(selectedTreatment === 'other') {
-      selectedTreatment = otherTreatmentType.value.trim() || 'Other';
-    }
+    const totalFee = parseFloat(formData.get('totalFee')) || 0;
+    const paidFees = parseFloat(formData.get('paidFees')) || 0;
     
-    const totalFee = parseFloat(form.totalFee.value) || 0;
-    const paidFees = parseFloat(form.paidFees.value) || 0;
-
     if (paidFees > totalFee) {
       alert('Paid Fees cannot be greater than Total Fee.');
       return;
     }
 
-    const newPatient = {
-      name: form.name.value.trim(),
-      contactNo: mobileNo,
-      email: form.email.value.trim(),
-      patientDescription: form.patientDescription.value.trim(),
-      treatmentStart: startDate,
+    const updatedData = {
+      name: formData.get('name'),
+      contactNo: formData.get('contactNo'),
+      email: formData.get('email'),
+      patientDescription: formData.get('patientDescription'),
+      treatmentStart: formData.get('treatmentStart'),
       totalFee: totalFee,
       paidFees: paidFees,
-      patientType: selectedTreatment
+      patientType: formData.get('treatmentType') 
     };
 
-    const created = await createPatient(newPatient);
-    if (created) {
+    const updated = await updatePatient(p.id, updatedData);
+    if (updated) {
       await loadPatients();
-      form.reset();
-      otherTreatmentType.style.display = 'none';
-      otherTreatmentType.required = false;
-      form.style.display = 'none';
-      showAddPatientBtn.style.display = 'inline-block';
+      const newIndex = patients.findIndex(patient => patient.id === p.id);
+      if (newIndex !== -1) {
+        showDetails(newIndex);
+      }
     }
   });
+}
 
-  document.getElementById('searchBtn').addEventListener('click', () => {
-    const q = searchInput.value.trim().toLowerCase();
-    if(!q) return;
-    const filtered = patients.filter(p => p.name.toLowerCase().includes(q));
-    renderList(filtered);
-  });
+const treatmentType = document.getElementById('treatmentType');
+const otherTreatmentType = document.getElementById('otherTreatmentType');
 
-  document.getElementById('showAllBtn').addEventListener('click', () => {
-    searchInput.value = '';
-    renderList(patients);
-  });
-
-  const showAddPatientBtn = document.getElementById('showAddPatientBtn');
-  const cancelAddPatientBtn = document.getElementById('cancelAddPatientBtn');
-
-  showAddPatientBtn.addEventListener('click', function() {
-    form.style.display = 'block';
-    showAddPatientBtn.style.display = 'none';
-  });
-
-  cancelAddPatientBtn.addEventListener('click', function() {
-    form.reset();
-    form.style.display = 'none';
-    showAddPatientBtn.style.display = 'inline-block';
+treatmentType.addEventListener('change', function() {
+  if (this.value === 'other') {
+    otherTreatmentType.style.display = 'block';
+    otherTreatmentType.required = true;
+  } else {
     otherTreatmentType.style.display = 'none';
     otherTreatmentType.required = false;
-  });
-</script>
-
-<script>
-async function fetchPatients() {
-  try {
-    console.log('🔄 Fetching patients...');
-    
-    const response = await fetch('/api/patients', {
-      method: 'GET',
-      credentials: 'include', // Important for sessions
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    console.log('📡 Response status:', response.status);
-    console.log('📡 Response ok:', response.ok);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log('📊 Received data:', data);
-    console.log('📊 Data type:', Array.isArray(data) ? 'Array' : typeof data);
-    console.log('📊 Data length:', data.length);
-    
-    // Update your table/display here
-    return data;
-    
-  } catch (error) {
-    console.error('❌ Fetch error:', error);
+    otherTreatmentType.value = '';
   }
-}
-</script>
+});
 
-<script>
-function submitPatientForm() {
-  const patientData = {
-    name: document.getElementById('patientName').value,
-    contactno: document.getElementById('mobile').value,
-    email: document.getElementById('email').value,
-    patienttype: document.getElementById('treatmentType').value,
-    patientdescription: document.getElementById('description').value,
-    treatmentstart: document.getElementById('startDate').value,
-    totalfee: parseInt(document.getElementById('totalFee').value) || 0,
-    paidfees: parseInt(document.getElementById('paidFees').value) || 0
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const mobileNo = form.contactNo.value;
+  if (!/^[6-9][0-9]{9}$/.test(mobileNo)) {
+    alert('Mobile number must be exactly 10 digits starting with 6, 7, 8, or 9');
+    return;
+  }
+  
+  const startDate = form.treatmentStart.value;
+  if (!validateDate(startDate)) {
+    alert('Treatment start date must be within the last 3 years');
+    return;
+  }
+  
+  let selectedTreatment = form.treatmentType.value;
+  if(selectedTreatment === 'other') {
+    selectedTreatment = otherTreatmentType.value.trim() || 'Other';
+  }
+  
+  const totalFee = parseFloat(form.totalFee.value) || 0;
+  const paidFees = parseFloat(form.paidFees.value) || 0;
+
+  if (paidFees > totalFee) {
+    alert('Paid Fees cannot be greater than Total Fee.');
+    return;
+  }
+
+  const newPatient = {
+    name: form.name.value.trim(),
+    contactNo: mobileNo,
+    email: form.email.value.trim(),
+    patientDescription: form.patientDescription.value.trim(),
+    treatmentStart: startDate,
+    totalFee: totalFee,
+    paidFees: paidFees,
+    patientType: selectedTreatment
   };
 
-  console.log('📤 Submitting patient data:', patientData);
+  const created = await createPatient(newPatient);
+  if (created) {
+    await loadPatients();
+    form.reset();
+    otherTreatmentType.style.display = 'none';
+    otherTreatmentType.required = false;
+    form.style.display = 'none';
+    showAddPatientBtn.style.display = 'inline-block';
+  }
+});
 
-  fetch('/api/patients', {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(patientData)
-  })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json();
-  })
-  .then(data => {
-    console.log('✅ Patient added successfully:', data);
-    // Optionally reload patients or update UI
-    loadPatients();
-  })
-  .catch(error => {
-    console.error('❌ Error adding patient:', error);
-  });
-}
+// Search functionality
+document.getElementById('searchBtn').addEventListener('click', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  if(!q) return;
+  const filtered = patients.filter(p => p.name.toLowerCase().includes(q));
+  renderList(filtered);
+});
+
+document.getElementById('showAllBtn').addEventListener('click', () => {
+  searchInput.value = '';
+  renderList(patients);
+});
+
+// Form show/hide functionality
+const showAddPatientBtn = document.getElementById('showAddPatientBtn');
+const cancelAddPatientBtn = document.getElementById('cancelAddPatientBtn');
+
+showAddPatientBtn.addEventListener('click', function() {
+  form.style.display = 'block';
+  showAddPatientBtn.style.display = 'none';
+});
+
+cancelAddPatientBtn.addEventListener('click', function() {
+  form.reset();
+  form.style.display = 'none';
+  showAddPatientBtn.style.display = 'inline-block';
+  otherTreatmentType.style.display = 'none';
+  otherTreatmentType.required = false;
+});
 </script>
 
 </body>
