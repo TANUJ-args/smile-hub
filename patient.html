@@ -903,21 +903,58 @@ const API = '/api/patients';
 
   async function loadPatients() {
     try {
-      const response = await fetch(API);
-      if (response.status === 401) {
-        window.location.href = '/login.html';
+      console.log('🔄 Loading patients...');
+      
+      const response = await fetch('/api/patients', {
+        method: 'GET',
+        credentials: 'include', // Important for session-based auth
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', response.headers);
+      
+      if (!response.ok) {
+        console.error('❌ API Error:', response.status, response.statusText);
         return;
       }
-      if (!response.ok) throw new Error('Failed to load patients');
-      patients = await response.json();
-      renderList(patients);
+      
+      const patients = await response.json();
+      console.log('📊 Received patients:', patients);
+      console.log('📊 Number of patients:', patients.length);
+      
+      // Display patients in table
+      displayPatients(patients);
+      
     } catch (error) {
-      console.error('Error loading patients:', error);
-      if (error.message.includes('401') || error.status === 401) {
-        window.location.href = '/login.html';
-      }
+      console.error('❌ Fetch error:', error);
     }
   }
+
+function displayPatients(patients) {
+  const tableBody = document.querySelector('#patient-table-body');
+  
+  if (!patients || patients.length === 0) {
+    tableBody.innerHTML = '<tr><td colspan="4">No patients found</td></tr>';
+    return;
+  }
+  
+  tableBody.innerHTML = patients.map(patient => `
+    <tr>
+      <td>${patient.name || 'No name'}</td>
+      <td>${patient.contactno || 'Not provided'}</td>
+      <td>₹${patient.due_money || 0}</td>
+      <td>
+        <button class="btn btn-danger" onclick="deletePatient('${patient.id}')">
+          Delete
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
 
   async function createPatient(patientData) {
     try {
@@ -1295,6 +1332,80 @@ patientDetailsContainer.innerHTML = `
     otherTreatmentType.style.display = 'none';
     otherTreatmentType.required = false;
   });
+</script>
+
+<script>
+async function fetchPatients() {
+  try {
+    console.log('🔄 Fetching patients...');
+    
+    const response = await fetch('/api/patients', {
+      method: 'GET',
+      credentials: 'include', // Important for sessions
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    console.log('📡 Response status:', response.status);
+    console.log('📡 Response ok:', response.ok);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('📊 Received data:', data);
+    console.log('📊 Data type:', Array.isArray(data) ? 'Array' : typeof data);
+    console.log('📊 Data length:', data.length);
+    
+    // Update your table/display here
+    return data;
+    
+  } catch (error) {
+    console.error('❌ Fetch error:', error);
+  }
+}
+</script>
+
+<script>
+function submitPatientForm() {
+  const patientData = {
+    name: document.getElementById('patientName').value,
+    contactno: document.getElementById('mobile').value,
+    email: document.getElementById('email').value,
+    patienttype: document.getElementById('treatmentType').value,
+    patientdescription: document.getElementById('description').value,
+    treatmentstart: document.getElementById('startDate').value,
+    totalfee: parseInt(document.getElementById('totalFee').value) || 0,
+    paidfees: parseInt(document.getElementById('paidFees').value) || 0
+  };
+
+  console.log('📤 Submitting patient data:', patientData);
+
+  fetch('/api/patients', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(patientData)
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  })
+  .then(data => {
+    console.log('✅ Patient added successfully:', data);
+    // Optionally reload patients or update UI
+    loadPatients();
+  })
+  .catch(error => {
+    console.error('❌ Error adding patient:', error);
+  });
+}
 </script>
 
 </body>

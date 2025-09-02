@@ -246,11 +246,50 @@ function validatePatient(body, isCreate = true) {
 // GET ALL PATIENTS FOR AUTHENTICATED USER
 app.get('/api/patients', ensureAuthenticated, async (req, res) => {
   try {
-    const { id: userId } = req.user;
-    const result = await queryDB('SELECT * FROM patients WHERE user_id = $1 ORDER BY id DESC', [userId]);
+    console.log('📍 Patient route hit, user_id:', req.user?.user_id || 'not authenticated');
+    
+    const query = 'SELECT * FROM patients WHERE user_id = $1';
+    const result = await pool.query(query, [req.user.user_id]); // Ensure user_id is correct
+    
+    console.log('📊 Query result:', result.rows.length, 'patients found');
+    console.log('📄 First patient:', result.rows[0]);
+    
     res.json(result.rows);
-  } catch (err) {
-    console.error('DB error:', err);
+  } catch (error) {
+    console.error('❌ Database error:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.get('/api/patients', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
+    const query = `
+      SELECT 
+        id,
+        name,
+        contactno,
+        email,
+        patientdescription,
+        treatmentstart,
+        totalfee,
+        paidfees,
+        (totalfee - paidfees) as due_money,
+        patienttype,
+        user_id
+      FROM patients 
+      WHERE user_id = $1
+    `;
+    
+    const result = await pool.query(query, [req.user.user_id]);
+    console.log('📊 Found patients:', result.rows.length);
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Database error:', error);
     res.status(500).json({ error: 'Database error' });
   }
 });
