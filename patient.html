@@ -1119,7 +1119,12 @@ patientDetailsContainer.innerHTML = `
           </div>
           <div class="mb-3">
             <label class="form-label"><strong>Treatment Start Date:</strong></label>
-            <input type="date" class="form-control" name="treatmentStart" value="${p.treatmentStart || ''}" min="${threeYearsAgo.toISOString().split('T')[0]}" max="${today.toISOString().split('T')[0]}">
+            <input type="date" class="form-control" name="treatmentStart" value="${(() => {
+              if (!p.treatmentStart) return '';
+              const d = new Date(p.treatmentStart);
+              if (isNaN(d)) return '';
+              return d.toISOString().split('T')[0];
+            })()}" min="${threeYearsAgo.toISOString().split('T')[0]}" max="${today.toISOString().split('T')[0]}">
           </div>
           <div class="mb-3">
             <label class="form-label"><strong>Total Fee:</strong></label>
