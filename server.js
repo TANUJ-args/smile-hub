@@ -5,8 +5,10 @@ const { Pool } = require('pg');
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
 const bcrypt = require('bcryptjs');
 const flash = require('connect-flash');
+const helmet = require('helmet');
 require('dotenv').config();
 
 const app = express();
@@ -31,18 +33,61 @@ pool.on('error', (err, client) => {
 });
 
 
-app.use(cors());
+// CRITICAL: Trust proxy for hosted environments
+app.set('trust proxy', 1);
+
+// Add Helmet for security headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "code.jquery.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com"],
+      fontSrc: ["'self'", "cdnjs.cloudflare.com", "fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'"]
+    }
+  },
+  // Set strict transport security for 1 year, include subdomains
+  hsts: {
+    maxAge: 31536000, // 1 year in seconds
+    includeSubDomains: true,
+    preload: true
+  }
+}));
+
+// CORS with proper credentials support
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://smile-hub.onrender.com'] 
+    : ['http://localhost:3000', 'http://localhost:5000'],
+  credentials: true, // Essential for cookies
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('.'));
 
-const session_secret = process.env.SESSION_SECRET || 'smile-hub-super-9999secure-session-key-2025';
+const session_secret = process.env.SESSION_SECRET || 'smile-hub-secret-key-2025';
 
+// Configure PostgreSQL session store
 app.use(session({
+  store: new pgSession({
+    pool: pool,
+    tableName: 'user_sessions'
+  }),
   secret: session_secret,
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 }
+  rolling: true, // Reset expiry on activity
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // HTTPS only in prod
+    httpOnly: true, // Prevent XSS
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // Cross-origin in prod
+  }
 }));
 
 app.use(passport.initialize());
@@ -51,12 +96,36 @@ app.use(flash());
 
 async function queryDB(text, params) {
   const client = await pool.connect();
+  const start = Date.now();
   try {
+    console.log('🔍 DB Query:', { text, params: params || 'none' });
     const result = await client.query(text, params);
+    const duration = Date.now() - start;
+    console.log('✅ DB Query complete', { 
+      duration_ms: duration, 
+      rows: result.rowCount 
+    });
     return result;
   } catch (error) {
-    console.error('Database query error:', error);
-    throw error;
+    const duration = Date.now() - start;
+    console.error('❌ DB Query error:', { 
+      error: error.message, 
+      code: error.code,
+      duration_ms: duration,
+      query: text,
+      params: params || 'none'
+    });
+    
+    // Add specific error handling for common Postgres errors
+    if (error.code === '23505') { // Unique violation
+      throw new Error('This record already exists: ' + error.detail);
+    } else if (error.code === '23503') { // Foreign key violation
+      throw new Error('Referenced record does not exist: ' + error.detail);
+    } else if (error.code === '42P01') { // Undefined table
+      throw new Error('Database table not found. Please contact support.');
+    } else {
+      throw error;
+    }
   } finally {
     client.release();
   }
@@ -68,6 +137,33 @@ async function queryDB(text, params) {
 async function initDB() {
   try {
     console.log('Initializing database tables...');
+    
+    // Create user_sessions table
+    await queryDB(`
+      CREATE TABLE IF NOT EXISTS user_sessions (
+        sid VARCHAR NOT NULL,
+        sess JSON NOT NULL,
+        expire TIMESTAMP(6) NOT NULL
+      );
+    `);
+    
+    // Check and add primary key
+    const pkCheck = await queryDB(`
+      SELECT constraint_name 
+      FROM information_schema.table_constraints 
+      WHERE table_name = 'user_sessions' 
+      AND constraint_type = 'PRIMARY KEY'
+    `);
+    
+    if (pkCheck.rows.length === 0) {
+      try {
+        await queryDB(`ALTER TABLE user_sessions ADD CONSTRAINT session_pkey PRIMARY KEY (sid);`);
+      } catch (e) {
+        console.log('Note: Primary key for sessions may already exist');
+      }
+    }
+    
+    await queryDB(`CREATE INDEX IF NOT EXISTS idx_session_expire ON user_sessions (expire);`);
     
     await queryDB(`
       CREATE TABLE IF NOT EXISTS users (
@@ -153,22 +249,94 @@ app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'register.h
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
+  const healthData = {
+    status: 'initializing',
+    version: process.env.npm_package_version || '1.0.0',
+    timestamp: new Date().toISOString(),
+    uptime: `${Math.floor(process.uptime())} seconds`,
+    environment: process.env.NODE_ENV || 'development',
+    components: {
+      database: { status: 'checking' },
+      session: { status: 'active' }
+    }
+  };
+  
   try {
+    // Check database connection
+    const dbStart = Date.now();
     await queryDB('SELECT 1');
-    res.json({ status: 'healthy', database: 'connected', timestamp: new Date().toISOString() });
+    const dbDuration = Date.now() - dbStart;
+    
+    healthData.components.database = {
+      status: 'connected',
+      responseTime: `${dbDuration}ms`
+    };
+    
+    // Verify session table
+    try {
+      const sessionCheck = await queryDB('SELECT COUNT(*) FROM user_sessions');
+      healthData.components.session = {
+        status: 'active',
+        count: parseInt(sessionCheck.rows[0].count, 10)
+      };
+    } catch (sessionError) {
+      healthData.components.session = {
+        status: 'error',
+        error: sessionError.message
+      };
+    }
+    
+    // Overall status
+    healthData.status = 'healthy';
+    res.json(healthData);
   } catch (error) {
-    res.status(503).json({ status: 'unhealthy', database: 'disconnected', error: error.message });
+    healthData.status = 'unhealthy';
+    healthData.components.database = {
+      status: 'disconnected',
+      error: error.message
+    };
+    res.status(503).json(healthData);
   }
 });
 
 // Auth
 app.post('/auth/login', (req, res, next) => {
+  console.log('🔑 Login attempt for:', req.body.username);
+  console.log('🍪 Session before login:', req.sessionID);
+  
   passport.authenticate('local', (err, user, info) => {
-    if (err) return next(err);
-    if (!user) return res.status(400).json({ success: false, message: info.message });
+    if (err) {
+      console.error('❌ Auth error:', err);
+      return next(err);
+    }
+    if (!user) {
+      console.log('❌ Login failed:', info.message);
+      return res.status(400).json({ success: false, message: info.message });
+    }
+    
     req.logIn(user, err => {
-      if (err) return next(err);
-      res.json({ success: true, user: { id: user.id, username: user.username, fullName: user.fullName } });
+      if (err) {
+        console.error('❌ Login error:', err);
+        return next(err);
+      }
+      
+      // CRITICAL: Save session before responding
+      req.session.save((err) => {
+        if (err) {
+          console.error('❌ Session save error:', err);
+          return next(err);
+        }
+        console.log('✅ User logged in and session saved:', user.username);
+        console.log('🍪 Session after login:', req.sessionID);
+        res.json({ 
+          success: true, 
+          user: { 
+            id: user.id, 
+            username: user.username, 
+            fullName: user.fullName 
+          } 
+        });
+      });
     });
   })(req, res, next);
 });
@@ -191,9 +359,27 @@ app.post('/auth/register', async (req, res) => {
   }
 });
 app.post('/auth/logout', (req, res, next) => {
+  console.log('🚪 Logout request received for user:', req.user?.username);
+  console.log('🍪 Session at logout:', req.sessionID);
+  
   req.logout(err => {
-    if (err) return next(err);
-    res.json({ success: true, message: 'Logged out successfully' });
+    if (err) {
+      console.error('❌ Logout error:', err);
+      return next(err);
+    }
+    
+    // Destroy the session in the database
+    req.session.destroy(err => {
+      if (err) {
+        console.error('❌ Session destruction error:', err);
+        return next(err);
+      }
+      
+      console.log('✅ User logged out and session destroyed');
+      // Clear the cookie
+      res.clearCookie('connect.sid');
+      res.json({ success: true, message: 'Logged out successfully' });
+    });
   });
 });
 app.get('/auth/user', (req, res) => {
