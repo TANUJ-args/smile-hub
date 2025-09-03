@@ -414,7 +414,22 @@ app.get('/api/patients', ensureAuthenticated, async (req, res) => {
   try {
     const { id: userId } = req.user;
     const result = await queryDB('SELECT * FROM patients WHERE user_id = $1 ORDER BY id DESC', [userId]);
-    res.json(result.rows);
+    // Normalize column names to camelCase for frontend compatibility
+    const rows = result.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      contactNo: row.contactno,
+      email: row.email,
+      patientDescription: row.patientdescription,
+      treatmentStart: row.treatmentstart,
+      totalFee: row.totalfee,
+      paidFees: row.paidfees,
+      patientType: row.patienttype,
+      userId: row.user_id,
+      createdAt: row.createdat,
+      updatedAt: row.updatedat
+    }));
+    res.json(rows);
   } catch (err) {
     console.error('DB error:', err);
     res.status(500).json({ error: 'Database error' });
@@ -426,7 +441,23 @@ app.get('/api/patients/:id', ensureAuthenticated, async (req, res) => {
     const { id: userId } = req.user;
     const result = await queryDB('SELECT * FROM patients WHERE id = $1 AND user_id = $2', [req.params.id, userId]);
     if (!result.rows.length) return res.status(404).json({ error: 'Patient not found' });
-    res.json(result.rows[0]);
+    const row = result.rows[0];
+    // Normalize column names to camelCase
+    const patient = {
+      id: row.id,
+      name: row.name,
+      contactNo: row.contactno,
+      email: row.email,
+      patientDescription: row.patientdescription,
+      treatmentStart: row.treatmentstart,
+      totalFee: row.totalfee,
+      paidFees: row.paidfees,
+      patientType: row.patienttype,
+      userId: row.user_id,
+      createdAt: row.createdat,
+      updatedAt: row.updatedat
+    };
+    res.json(patient);
   } catch (err) {
     res.status(500).json({ error: 'Database error' });
   }
