@@ -70,7 +70,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('.'));
 
-const session_secret = process.env.SESSION_SECRET || 'smile-hub-secret-key-2025';
+const session_secret = process.env.SESSION_SECRET || 'smile-hub-super-9999secure-session-key-2025';
 
 // Configure PostgreSQL session store
 app.use(session({
