@@ -473,10 +473,43 @@
         let currentEditingImage = null;
         let cropper = null;
         let pendingImages = [];
+        let currentUser = null;
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            loadPatients();
+        // Check authentication and load user info
+        async function checkAuthStatus() {
+            try {
+                const res = await fetch('/auth/user', { credentials: 'include' });
+                const data = await res.json();
+                if (!data.authenticated) {
+                    window.location.href = '/login.html';
+                    return false;
+                }
+                currentUser = data.user;
+                // Show user info in header if desired
+                const headerSection = document.querySelector('.header-section');
+                if (headerSection && currentUser) {
+                    let userInfo = document.getElementById('userInfoHeader');
+                    if (!userInfo) {
+                        userInfo = document.createElement('div');
+                        userInfo.id = 'userInfoHeader';
+                        userInfo.style.marginTop = '10px';
+                        userInfo.style.fontWeight = 'bold';
+                        userInfo.style.fontSize = '1.1rem';
+                        headerSection.appendChild(userInfo);
+                    }
+                    userInfo.textContent = `Logged in as: ${currentUser.fullName || currentUser.username}`;
+                }
+                return true;
+            } catch (err) {
+                window.location.href = '/login.html';
+                return false;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            const authed = await checkAuthStatus();
+            if (!authed) return;
+            await loadPatients();
             setupEventListeners();
             setDateLimits();
         });
@@ -533,6 +566,8 @@
                 if (response.ok) {
                     patients = await response.json();
                     renderPatientsTable();
+                } else if (response.status === 401) {
+                    window.location.href = '/login.html';
                 } else {
                     throw new Error('Failed to load patients');
                 }

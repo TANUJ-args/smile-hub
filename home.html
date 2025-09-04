@@ -9,24 +9,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-      :root {
-        --primary-color: #000000;
-        --secondary-color: #ffffff;
-        --accent-color: #6c757d;
-        --dark-bg: #0a0c10;
-        --darker-bg: #151922;
-        --card-bg: rgba(255, 255, 255, 0.08);
-        --text-primary: #ffffff;
-        --text-secondary: rgba(255, 255, 255, 0.8);
-        --text-muted: rgba(255, 255, 255, 0.6);
-        --border-color: rgba(255, 255, 255, 0.1);
-        --shadow-light: 0 8px 32px rgba(255, 255, 255, 0.1);
-        --shadow-heavy: 0 20px 60px rgba(0, 0, 0, 0.5);
-        --gradient-primary: linear-gradient(135deg, #000000 0%, #343a40 100%);
-        --gradient-secondary: linear-gradient(135deg, #343a40 0%, #6c757d 100%);
-        --gradient-bg: linear-gradient(135deg, var(--dark-bg) 0%, var(--darker-bg) 50%, #1a1f2e 100%);
-      }
-
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --light-bg: #ecf0f1;
+            --dark-text: #2c3e50;
+        }
       * {
         margin: 0;
         padding: 0;
@@ -40,12 +31,11 @@
       }
 
       body {
-        background: var(--gradient-bg);
-        background-attachment: fixed;
-        color: var(--text-primary);
-        line-height: 1.6;
-        overflow-x: hidden;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       }
+
 
       /* Animated background elements */
       body::before {
